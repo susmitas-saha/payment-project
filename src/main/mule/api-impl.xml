@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="sf-payment-flow" doc:id="233e4675-9974-461c-97ae-2d21db1f82e3" >
+		<set-variable value="#[%dw 2.0
+output application/xml
+---
+payload]" doc:name="initialpayloadVar" doc:id="5b1ebf74-0188-4304-be8f-c930eace17df" variableName="initialpayloadVar"/>
+		<flow-ref doc:name="pf-routing-flow" doc:id="4e31ea4f-1964-4d60-aa75-140b533c07c1" name="pf-routing-flow"/>
+
+	
+	</sub-flow>
+	<sub-flow name="sf-reprocessing-flow" doc:id="dee831a4-5144-4cf7-8fd3-e1b9de8c7d46" >
+		<flow-ref doc:name="sf-get-warehouse" doc:id="f42c52ff-4035-4bf8-9663-fccc6af6a4fb" name="sf-get-warehouse"/>
+		<ee:transform doc:name="Transform Message" doc:id="1722720f-a33f-40bd-9a42-399a4020dc4d" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload.paymentResponse]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<foreach doc:name="For Each" doc:id="1147b9c5-6528-4592-bda9-c25300cee19e" collection="#[payload.Payload]">
+			<ee:transform doc:name="Transform Message" doc:id="2b5e5b9c-1fba-449d-a6c5-afa2ff100517" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+read(payload, 'application/xml')]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<logger level="INFO" doc:name="Logger" doc:id="531fdc29-d0f8-446c-a908-27df194e101d" message="#[payload]" category="****Payloaf inside for each****"/>
+			<flow-ref doc:name="sf-payment-flow" doc:id="b9052f8e-017c-4a93-8b16-8c50f05ca6e5" name="sf-payment-flow"/>
+		</foreach>
+	</sub-flow>
+</mule>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="b4877c0a-9a1e-4306-bf0a-877e7afb93eb" >
+		<http:listener-connection host="${http.host}" port="${http.port}" />
+	</http:listener-config>
+	<apikit:config outboundHeadersMapName="outboundHeadersMapName" httpStatusVarName="httpStatus" doc:name="Router" doc:id="6d6cb3f3-fcd3-483b-92e2-3b7e3eaf12b7" name="api-config" api="api\payment.raml" />
+	<http:request-config name="WAREHOUSE_Request_configuration" doc:name="HTTP Request configuration" doc:id="cd0f1b40-5979-489d-bafe-4cc28296cd03" >
+		<http:request-connection host="localhost" port="8094" />
+		<http:default-headers >
+			<http:default-header key="Content-Type" value="application/json" />
+		</http:default-headers>
+	</http:request-config>
+	<http:request-config name="PaymentHUB_Request_configuration" doc:name="HTTP Request configuration" doc:id="fbeae013-e12b-42ff-94cd-ddad721e9b93" >
+		<http:request-connection host="${hub.api.host}" port="${hub.api.port}" />
+		<http:default-query-params >
+			<http:query-param key="content-type" value="application/json" />
+		</http:default-query-params>
+	</http:request-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="b509be2a-400a-4ee2-8186-1261c9ab8847" file="${env}.properties" />
+</mule>

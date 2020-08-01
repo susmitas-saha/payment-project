@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd ">
+    <apikit:config name="payment-config" api="payment.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="payment-main">
+        <http:listener config-ref="HTTP_Listener_config" path="/payment-glcm/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="api-config" />
+       <error-handler ref="referencedHandler"/>
+    </flow>
+    <flow name="post:\payment:application\xml:api-config">
+        <flow-ref doc:name="sf-payment-flow" doc:id="bd5e180f-c1c9-4d5e-b29b-0ccdde780c61" name="sf-payment-flow"/>
+		<ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="158ce70b-cc92-4c0c-bbcc-847e385e2ba1">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+{
+  Response: {
+    Code: "200",
+    Status: "Routed Successfully",
+    Addtional: payload
+  }
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="post:\reprocessing:application\xml:api-config">
+        <flow-ref doc:name="sf-reprocessing-flow" doc:id="5cc70484-6900-44fe-a7e2-3fcd588eab6f" name="sf-reprocessing-flow"/>
+		<ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="5f14121f-e99e-4110-8de0-61cb8bfa7fc3">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+---
+{
+  Response: {
+    Code: "200",
+    Status: "Routed Successfully",
+    Addtional: null
+  }
+
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <error-handler ref="referencedHandler"/>
+    </flow>
+    
+</mule>

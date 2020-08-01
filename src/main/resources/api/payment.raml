@@ -1,0 +1,58 @@
+#%RAML 1.0
+title: payment
+description: This is My Payment Project
+
+/payment:
+  
+
+  post:
+    description: payment type
+    body:
+      application/xml:
+        example: !include request.xml
+    responses:
+      200:
+        body:
+          application/xml:
+            example: !include successresponse.xml
+      404:
+        body:
+          application/json:
+            example:
+              {
+                pending
+              }
+      500:
+        body:
+          application/json:
+            example:
+              {
+                pending
+              }
+
+/reprocessing:
+   
+  post:
+    description: payment type
+    body:
+      application/xml:
+        example: !include reprocessing_request.xml
+    responses:
+      200:
+        body:
+          application/xml:
+            example: !include successresponse.xml
+      404:
+        body:
+          application/json:
+            example:
+              {
+                pending
+              }
+      500:
+        body:
+          application/json:
+            example:
+              {
+                pending
+              }

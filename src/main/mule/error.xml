@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="sf-common-error" doc:id="9d46b576-6db9-40e3-b6bc-156c739943e6" >
+		<set-variable value="#[vars.errorCode]" doc:name="Set Http Status" doc:id="566c6267-cab3-4915-b7b9-cf39b8421711" variableName="httpStatus"/>
+		<ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="9265386a-d2bf-4790-89a6-1f528fba5231" doc:name="Set Error Information">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/xml skipNullOn="everywhere"
+---
+ResponseHdr:
+{
+	Status:"NOTOK",
+	Code:vars.errorCode,
+	CodeDescription:vars.errorMessage
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus"><![CDATA[400]]></ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+		<set-variable value="application/xml" doc:name="Set Content Type" doc:id="fb77f603-3513-4da4-8bee-4c55b31ce188" variableName="Content-Type"/>
+	</sub-flow>
+	<error-handler name="referencedHandler" doc:id="fdd9a453-3432-4090-820f-c4d5f62e2e35" >
+	<on-error-propagate type="APIKIT:BAD_REQUEST">
+                <set-variable value="#[400]" doc:name="Set Error Code" doc:id="461530d8-b418-419d-aaff-55c143740b8e" variableName="errorCode"/>
+			    <set-variable value="Invalid Request" doc:name="Set Exception Info" doc:id="9a425a90-f2cc-4fd1-ad9e-e8f39e0c77b9" variableName="errorMessage"/>
+			<flow-ref doc:name="sf-common-error" doc:id="d3c8e3f8-ab1c-4b04-a628-d780d767b68c" name="sf-common-error"/>            
+</on-error-propagate>
+<on-error-propagate type="APIKIT:NOT_FOUND">
+			<set-variable value="#[404]" doc:name="Set Error Code" doc:id="e295ac96-9994-429b-860f-797baf6074d5" variableName="errorCode"/>
+			<set-variable value="Not Found" doc:name="Set Exception Info" doc:id="50e2e9db-fa5d-491a-b639-f37572c6e185" variableName="errorMessage"/>
+			<flow-ref doc:name="sf-common-error" doc:id="a9e44ad3-4ce2-467e-b411-8a02a808a277" name="sf-common-error"/>
+
+            </on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="702bdacd-c6ba-4c90-959d-aecd8623cc87" type="APIKIT:METHOD_NOT_ALLOWED">
+			<set-variable value="#[405]" doc:name="Set Error Code" doc:id="4aa35eba-671c-4061-8e3d-62c443c79da2" variableName="errorCode"/>
+			<set-variable value="Method Not Allowed" doc:name="Set Exception Info" doc:id="5f51316b-9c29-495b-a3b2-d48dde1a8630" variableName="errorMessage"/>
+			<flow-ref doc:name="sf-common-error" doc:id="c8b34dee-e068-492f-b92f-21f70e37c462" name="sf-common-error"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="d9dc9c78-2c8e-41c2-9e49-e099476b9bcb" type="APIKIT:NOT_ACCEPTABLE">
+			<set-variable value="#[406]" doc:name="Set Error Code" doc:id="f0e41dd0-b5bf-4aa9-80b1-320be38a065c" variableName="errorCode"/>
+			<set-variable value="Not Acceptable" doc:name="Set Exception Info" doc:id="bafe94ab-b395-4d64-81db-1afcd9d968bc" variableName="errorMessage"/>
+			<flow-ref doc:name="sf-common-error" doc:id="c5c1e599-6dca-41f5-b35b-5c1fb0b36362" name="sf-common-error"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="952f63c6-5dcc-41d3-aa91-b4753db6cdf3" type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+			<set-variable value="#[415]" doc:name="Set Error Code" doc:id="aeac4226-8dae-450e-889c-764989767917" variableName="errorCode"/>
+			<set-variable value="Unsupported Media Type" doc:name="Set Exception Info" doc:id="ab9082ef-cfe0-435f-ba1c-f1597fba987e" variableName="errorMessage"/>
+			<flow-ref doc:name="sf-common-error" doc:id="7db2bd76-a371-4eaa-9ae0-66770d04f5cf" name="sf-common-error"/>
+		</on-error-propagate>
+		<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="9dc86e69-7344-4153-92d4-92ef93e332dd" type="APIKIT:NOT_IMPLEMENTED">
+			<set-variable value="#[501]" doc:name="Set Error Code" doc:id="62ddf12f-76f4-4e46-9f72-ad580b28587a" variableName="errorCode"/>
+			<set-variable value="Not Implemented" doc:name="Set Exception Info" doc:id="bad80317-d733-4658-bd06-55b789a28ade" variableName="errorMessage"/>
+			<flow-ref doc:name="sf-common-error" doc:id="35ee7e35-3aaf-4afb-bc29-db0c6cf2d8ae" name="sf-common-error"/>
+		</on-error-propagate>
+	</error-handler>
+</mule>
+           

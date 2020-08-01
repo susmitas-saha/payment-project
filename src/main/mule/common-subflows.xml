@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<sub-flow name="sf-transformation" doc:id="7cba37ce-9fbb-40f2-89d6-6b76a8857802" >
+		<ee:transform doc:name="Transform Message" doc:id="705f91d3-2bb8-486b-86a8-aae9e6a53d5b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<set-variable value="#[payload]" doc:name="Set original payload" doc:id="25d4fa5e-aa5b-4d90-bbf0-f40d7bd77a9b" variableName="initialPayload" />
+		<ee:transform doc:name="Transform Message" doc:id="62c4a934-855a-4964-bfc2-906cc6aa4fdf" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"codeType":"DAT",
+	"msgDetails":{
+		"msgTimestamp":now(),
+		"originalISOMsgname":"pacs.008.001.07",
+		"originalMsgCreationDate":payload.Document.FIToFICstmrCdtTrf.GrpHdr.CreDtTm,		
+	},
+	"paymentInfo":
+	{
+		"msgIdentification":payload.Document.FIToFICstmrCdtTrf.GrpHdr.MsgId,
+		"originalMsgIdentification":payload.Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.OriginalMsgID ,
+		"originalE2EIdentification":payload.Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.EndToEndId,
+		"originalTxnIdentification":payload.Document.FIToFICstmrCdtTrf.CdtTrfTxInf.PmtId.TxId,
+		"paymentMsg":payload,
+		"fillerField":"NA"
+		
+	},
+	"msgStatusInfo":
+	{
+		"procStatus":"NA",
+		"procStatusRsnCode":"NA",
+		"procStatusRsnCodeDesc":"NA",
+		"procStatusAddnInfo":"NA"
+	}
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</sub-flow>
+	<sub-flow name="sf-postwarehouse" doc:id="fde31713-0ece-4fcf-9517-5e9a6c7b3758" >
+		<logger level="INFO" doc:name="Logger" doc:id="b8b72033-005d-4b7c-a332-8f5bdf78a6d3" message="#[payload]" category="*****before going to warehouse****"/>
+		<choice doc:name="Choice" doc:id="5a619621-5678-4939-91ef-be2a773b94a2" >
+			<when expression='#[((payload.statuscode)==("201"))]'>
+				<ee:transform doc:name="Transform Message" doc:id="e8d9e1ce-7319-44d8-a09c-a64aefda8330" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	MSG_ID: vars.transformVar.paymentInfo.msgIdentification,
+PAYMENT_UNIQUE_ID:vars.transformVar.paymentInfo.originalMsgIdentification,
+CREATE_DATE:vars.transformVar.msgDetails.originalMsgCreationDate,
+REF_MSG_TYPE:vars.transformVar.msgDetails.originalISOMsgname,
+Payload:write(vars.transformVar,"application/json"),
+latestStatus:"SENT_TO_PROCESSOR"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<when expression='#[((payload.statuscode)==("400"))]'>
+				<ee:transform doc:name="Transform Message" doc:id="b4e805ee-caf8-4ad6-88be-873f6e1f39a8" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	MSG_ID: vars.transformVar.paymentInfo.msgIdentification,
+PAYMENT_UNIQUE_ID:vars.transformVar.paymentInfo.originalMsgIdentification,
+CREATE_DATE:vars.transformVar.msgDetails.originalMsgCreationDate,
+REF_MSG_TYPE:vars.transformVar.msgDetails.originalISOMsgname,
+Payload:write(vars.initialpayloadVar,"application/xml"),
+latestStatus:"RETRY_PROCESSOR"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="a2dbaaba-95e3-454e-8131-7ea6a9d84568" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	MSG_ID: vars.transformVar.paymentInfo.msgIdentification,
+PAYMENT_UNIQUE_ID:vars.transformVar.paymentInfo.originalMsgIdentification,
+CREATE_DATE:vars.transformVar.msgDetails.originalMsgCreationDate,
+REF_MSG_TYPE:vars.transformVar.msgDetails.originalISOMsgname,
+Payload:write(vars.initialpayloadVar,"application/xml"),
+latestStatus:"REJECTED_BY_PROCESSOR"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+		<http:request method="POST" doc:name="Request" doc:id="e70c084f-0254-4665-9b8e-0367a51027f1" config-ref="WAREHOUSE_Request_configuration" path="/bulk-payments/warehouse" sendBodyMode="ALWAYS">
+					<http:headers><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+				</http:request>
+	</sub-flow>
+	<sub-flow name="sf-get-warehouse" doc:id="1580ad70-a87d-4c40-9540-16056fe0b395" >
+		<http:request method="GET" doc:name="Request" doc:id="55d2e09c-5d47-4f82-8421-d04d8c1aafb2" config-ref="WAREHOUSE_Request_configuration" path="/bulk-payments/warehouse">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"lateststatus" : payload.Document.lateststatus
+}]]]></http:query-params>
+		</http:request>
+	</sub-flow>
+	<sub-flow name="sf-paymenthub" doc:id="3a107c6d-8d94-4eaa-b46f-d106722af29b" >
+		<http:request method="POST" doc:name="Request" doc:id="5a8d0d78-1468-484e-a79e-bfdfb1cc541a" config-ref="PaymentHUB_Request_configuration" path="/payment-hub/paymenthub" sendBodyMode="ALWAYS">
+			<http:headers ><![CDATA[#[output application/java
+---
+{
+	"Content-Type" : "application/json"
+}]]]></http:headers>
+			<http:response-validator >
+				<http:success-status-code-validator values="0..599" />
+			</http:response-validator>
+		</http:request>
+	</sub-flow>
+	<flow name="pf-routing-flow" doc:id="30fc78db-3738-4b8a-b873-ed13eac23430" > 
+		<flow-ref doc:name="sf-transformation" doc:id="a9500f84-3b5a-4d27-adb4-f121509b4045" name="sf-transformation"/>
+	<set-variable value="#[payload]" doc:name="Set-transformVar" doc:id="7014fee2-07f6-4159-9f29-6cab737fc036" variableName="transformVar" mimeType="application/json"/>
+		<flow-ref doc:name="sf-paymenthub" doc:id="f9ae2374-e1ac-4c35-82af-7d1f83c482e1" name="sf-paymenthub" />
+		<flow-ref doc:name="sf-warehouse" doc:id="3f765bd8-69ab-4b1e-8487-57cc5b871ba5" name="sf-postwarehouse" />
+		<error-handler >
+			<on-error-continue enableNotifications="true" logException="true" doc:name="On Error Continue" doc:id="33caee63-cba3-4bf9-be3f-d78aa508814f" type="ANY">
+				<logger level="INFO" doc:name="Logger" doc:id="40afa780-7c83-414d-961e-8ef5b4a5efef" category="Error in processing payment"/>
+			</on-error-continue>
+		</error-handler>
+	
+</flow>
+</mule>
